@@ -53,11 +53,25 @@ void ADDI(struct cpu_t* cpu, struct instr_t* instr){
     cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] + instr->immI;
 }
 
+void SLTI(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = (int32_t) cpu->reg[instr->rs1No] < (int32_t) instr->immI;
+}
+
+void SLTIU(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] < instr->immI;
+}
+
+void XORI(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] ^ instr->immI;
+}
+
+void ORI(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] | instr->immI;
+}
+
 void ADD(struct cpu_t* cpu, struct instr_t* instr){
     cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] + cpu->reg[instr->rs2No];
 }
-
-
 
 void DecodeCallback(struct instr_t* instr){
 
@@ -66,6 +80,18 @@ void DecodeCallback(struct instr_t* instr){
             switch (instr->funct3) {
                 case 0b000:
                     instr->callback = &ADDI;
+                    break;
+                case 0b010:
+                    instr->callback = &SLTI;
+                    break;
+                case 0b011:
+                    instr->callback = &SLTIU;
+                    break;
+                case 0b100:
+                    instr->callback = &XORI;
+                    break;
+                case 0b110:
+                    instr->callback = &ORI;
                     break;
             }
             break;
