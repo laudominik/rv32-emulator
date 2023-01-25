@@ -136,15 +136,21 @@ void test_SHIFTI(){
                 0x02209193, // slli x3, x1, 33
                 0x00111213, // slli x4, x2, 1
                 0x0010d293, // srli x5, x1, 1
-                0x00215313 // srli x6, x2, 2
+                0x00215313, // srli x6, x2, 2
+                0x4030d393, // srai x7, x1, 3
+                0x40115413, // srai x8, x2, 1
+                0x40215493 // srai x9, x2, 2
                 );
 
-    TickN(&cpu, 6);
+    TickN(&cpu, 9);
 
     assert(cpu.reg[3] == 4);
     assert(cpu.reg[4] == -4);
     assert(cpu.reg[5] == 0);
     assert(cpu.reg[6] == 0x3FFFFFFF);
+    assert(cpu.reg[7] == 0);
+    assert(cpu.reg[8] == -1);
+    assert(cpu.reg[9] == -1);
 }
 
 void TestRunner(){

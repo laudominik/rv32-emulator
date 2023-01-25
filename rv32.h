@@ -81,6 +81,10 @@ void SRLI(struct cpu_t* cpu, struct instr_t* instr){
     cpu->reg[instr->rdNo] = (cpu->reg[instr->rs1No] >> instr->rs2No);
 }
 
+void SRAI(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = SignExtend(cpu->reg[instr->rs1No] >> instr->rs2No, 31 - instr->rs2No);
+}
+
 void ADD(struct cpu_t* cpu, struct instr_t* instr){
     cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] + cpu->reg[instr->rs2No];
 }
@@ -106,7 +110,11 @@ void DecodeCallback(struct instr_t* instr){
                     instr->callback = &XORI;
                     break;
                 case 0b101:
-                    instr->callback = &SRLI;
+                    if(instr->funct7 == 0){
+                        instr->callback = &SRLI;
+                    } else {
+                        instr->callback = &SRAI;
+                    }
                     break;
                 case 0b110:
                     instr->callback = &ORI;
