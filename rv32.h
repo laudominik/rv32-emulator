@@ -69,6 +69,18 @@ void ORI(struct cpu_t* cpu, struct instr_t* instr){
     cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] | instr->immI;
 }
 
+void ANDI(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] & instr->immI;
+}
+
+void SLLI(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = (cpu->reg[instr->rs1No] << instr->rs2No);
+}
+
+void SRLI(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = (cpu->reg[instr->rs1No] >> instr->rs2No);
+}
+
 void ADD(struct cpu_t* cpu, struct instr_t* instr){
     cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] + cpu->reg[instr->rs2No];
 }
@@ -81,6 +93,9 @@ void DecodeCallback(struct instr_t* instr){
                 case 0b000:
                     instr->callback = &ADDI;
                     break;
+                case 0b001:
+                    instr->callback = &SLLI;
+                    break;
                 case 0b010:
                     instr->callback = &SLTI;
                     break;
@@ -90,8 +105,14 @@ void DecodeCallback(struct instr_t* instr){
                 case 0b100:
                     instr->callback = &XORI;
                     break;
+                case 0b101:
+                    instr->callback = &SRLI;
+                    break;
                 case 0b110:
                     instr->callback = &ORI;
+                    break;
+                case 0b111:
+                    instr->callback = &ANDI;
                     break;
             }
             break;
