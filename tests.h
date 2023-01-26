@@ -5,7 +5,7 @@
 #include <assert.h>
 #include "rv32.h"
 
-#define TEST_N 5
+#define TEST_N 7
 
 #define VA_NARGS_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, N, ...) N
 #define VA_NARGS(...) VA_NARGS_IMPL(_, ## __VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
@@ -131,16 +131,17 @@ void test_SHIFTI(){
     struct cpu_t cpu;
     Reset(&cpu);
 
-    CODE_HELPER(0x00100093, // addi x1, x0, 1
-                0xffe00113, // addi x2, x0, -2
-                0x02209193, // slli x3, x1, 33
-                0x00111213, // slli x4, x2, 1
-                0x0010d293, // srli x5, x1, 1
-                0x00215313, // srli x6, x2, 2
-                0x4030d393, // srai x7, x1, 3
-                0x40115413, // srai x8, x2, 1
-                0x40215493 // srai x9, x2, 2
-                );
+    CODE_HELPER(
+            0x00100093, // addi x1, x0, 1
+            0xffe00113, // addi x2, x0, -2
+            0x02209193, // slli x3, x1, 33
+            0x00111213, // slli x4, x2, 1
+            0x0010d293, // srli x5, x1, 1
+            0x00215313, // srli x6, x2, 2
+            0x4030d393, // srai x7, x1, 3
+            0x40115413, // srai x8, x2, 1
+            0x40215493 // srai x9, x2, 2
+                )
 
     TickN(&cpu, 9);
 
@@ -153,6 +154,44 @@ void test_SHIFTI(){
     assert(cpu.reg[9] == -1);
 }
 
+void test_SUB(){
+    struct cpu_t cpu;
+    Reset(&cpu);
+
+    CODE_HELPER(
+            0x00300093, // addi x1, x0, 3
+            0x40100133, // sub x2, x0, x1
+            0x402001b3 // sub x3, x0, x2
+            )
+
+    TickN(&cpu, 3);
+
+    assert(cpu.reg[1] == 3);
+    assert(cpu.reg[2] == -3);
+    assert(cpu.reg[3] == 3);
+}
+
+void test_SHIFT(){
+    struct cpu_t cpu;
+    Reset(&cpu);
+
+    CODE_HELPER(
+            0x00200093, // addi x1, x0, 2
+            0x00109133, // sll x2, x1, x1
+            0x002091b3, // sll x3, x1, x2
+            0x02200213, // addi x4, x0, 34
+            0x004092b3 // sll x5, x1, x4
+            )
+
+    TickN(&cpu, 5);
+    assert(cpu.reg[1] == 2);
+    assert(cpu.reg[2] == 8);
+    assert(cpu.reg[3] == 512);
+    assert(cpu.reg[4] == 34);
+    assert(cpu.reg[5] == 8);
+
+}
+
 void TestRunner(){
      typedef void(*testfptr)();
      testfptr tests[TEST_N] = {
@@ -160,7 +199,9 @@ void TestRunner(){
              &test_ADD,
              &test_SETI,
              &test_LOGI,
-             &test_SHIFTI
+             &test_SHIFTI,
+             &test_SUB,
+             &test_SHIFT
      };
 
      for(int i = 0; i < TEST_N; i++){

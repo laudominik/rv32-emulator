@@ -89,6 +89,15 @@ void ADD(struct cpu_t* cpu, struct instr_t* instr){
     cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] + cpu->reg[instr->rs2No];
 }
 
+void SUB(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] - cpu->reg[instr->rs2No];
+}
+
+void SLL(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = (cpu->reg[instr->rs1No] << (cpu->reg[instr->rs2No] & 0x1F));
+}
+
+
 void DecodeCallback(struct instr_t* instr){
 
     switch (instr->opcode) {
@@ -127,8 +136,16 @@ void DecodeCallback(struct instr_t* instr){
         case 0b0110011:
             switch (instr->funct3) {
                 case 0b000:
-                    instr->callback = &ADD;
+                    if(instr->funct7 == 0){
+                        instr->callback = &ADD;
+                    } else {
+                        instr->callback = &SUB;
+                    }
                     break;
+                case 0b001:
+                    instr->callback = &SLL;
+                    break;
+
             }
     }
 }
