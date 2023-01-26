@@ -7,8 +7,8 @@
 
 #define TEST_N 7
 
-#define VA_NARGS_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, N, ...) N
-#define VA_NARGS(...) VA_NARGS_IMPL(_, ## __VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+#define VA_NARGS_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12,_13, N, ...) N
+#define VA_NARGS(...) VA_NARGS_IMPL(_, ## __VA_ARGS__, 13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 
 #define CODE_HELPER(...) uint32_t t[] = {__VA_ARGS__}; WriteCode(cpu.memory, t, VA_NARGS(__VA_ARGS__));
 
@@ -64,7 +64,7 @@ void test_ADD(){
 
 }
 
-void test_SETI(){
+void test_SLTI(){
     struct cpu_t cpu;
     Reset(&cpu);
 
@@ -180,15 +180,43 @@ void test_SHIFT(){
             0x00109133, // sll x2, x1, x1
             0x002091b3, // sll x3, x1, x2
             0x02200213, // addi x4, x0, 34
-            0x004092b3 // sll x5, x1, x4
+            0x004092b3, // sll x5, x1, x4
+            0x0012d333, // srl x6, x5, x1
+            0xffc00393, // addi x7, x0, -4
+            0x0013d433, // srl x8, x7, x1
+            0x4013d4b3, // sra  x9, x7, x1
+            0x00100513, // addi x10, x0, 1
+           0x00a3d5b3, // srl x11, x7, x10
+           0x40a3d633  // sra x12, x7, x10
             )
 
-    TickN(&cpu, 5);
+    TickN(&cpu, 12);
     assert(cpu.reg[1] == 2);
     assert(cpu.reg[2] == 8);
     assert(cpu.reg[3] == 512);
     assert(cpu.reg[4] == 34);
     assert(cpu.reg[5] == 8);
+    assert(cpu.reg[6] == 2);
+    assert(cpu.reg[7] == -4);
+    assert(cpu.reg[8] == 0x3FFFFFFF);
+    assert(cpu.reg[9] == -1);
+    assert(cpu.reg[10] == 1);
+    assert(cpu.reg[11] == 0x7FFFFFFE);
+    assert(cpu.reg[12] == -2);
+
+}
+
+void test_SLT(){
+    struct cpu_t cpu;
+    Reset(&cpu);
+
+    CODE_HELPER(
+
+
+
+            )
+
+
 
 }
 
@@ -197,7 +225,7 @@ void TestRunner(){
      testfptr tests[TEST_N] = {
              &test_ADDI,
              &test_ADD,
-             &test_SETI,
+             &test_SLTI,
              &test_LOGI,
              &test_SHIFTI,
              &test_SUB,

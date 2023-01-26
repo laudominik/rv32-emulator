@@ -97,6 +97,15 @@ void SLL(struct cpu_t* cpu, struct instr_t* instr){
     cpu->reg[instr->rdNo] = (cpu->reg[instr->rs1No] << (cpu->reg[instr->rs2No] & 0x1F));
 }
 
+void SRL(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = (cpu->reg[instr->rs1No] >> (cpu->reg[instr->rs2No] & 0x1F));
+}
+
+void SRA(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = SignExtend(
+            cpu->reg[instr->rs1No] >> (cpu->reg[instr->rs2No] & 0x1F),
+            31 - (cpu->reg[instr->rs2No] & 0x1F));
+}
 
 void DecodeCallback(struct instr_t* instr){
 
@@ -144,6 +153,13 @@ void DecodeCallback(struct instr_t* instr){
                     break;
                 case 0b001:
                     instr->callback = &SLL;
+                    break;
+                case 0b101:
+                    if(instr->funct7 == 0){
+                        instr->callback = &SRL;
+                    } else {
+                        instr->callback = &SRA;
+                    }
                     break;
 
             }
