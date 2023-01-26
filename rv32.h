@@ -30,8 +30,10 @@ struct instr_t {
 };
 
 struct cpu_t {
-    uint32_t reg[32]; //GPR
+    uint32_t reg[32]; // GPR
     uint32_t PC;
+    uint32_t csr[4096];
+
     struct instr_t currentInstr;
 
     uint8_t memory[1024];
@@ -107,8 +109,17 @@ void SRA(struct cpu_t* cpu, struct instr_t* instr){
             31 - (cpu->reg[instr->rs2No] & 0x1F));
 }
 
+void SLT(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = (int32_t) cpu->reg[instr->rs1No] < (int32_t) cpu->reg[instr->rs2No];
+}
+
+void SLTU(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] < cpu->reg[instr->rs2No];
+}
+
 void DecodeCallback(struct instr_t* instr){
 
+    instr->callback = NULL;
     switch (instr->opcode) {
         case 0b0010011:
             switch (instr->funct3) {
@@ -153,6 +164,12 @@ void DecodeCallback(struct instr_t* instr){
                     break;
                 case 0b001:
                     instr->callback = &SLL;
+                    break;
+                case 0b010:
+                    instr->callback = &SLT;
+                    break;
+                case 0b011:
+                    instr->callback = &SLTIU;
                     break;
                 case 0b101:
                     if(instr->funct7 == 0){
@@ -220,7 +237,15 @@ void Tick(struct cpu_t* cpu){
     uint32_t instruction = Fetch(cpu);
     Decode(&cpu->currentInstr,instruction);
     cpu->PC += 4;
+    if(cpu->currentInstr.callback == NULL) {
+        assert(0);
+    }
     cpu->currentInstr.callback(cpu, &cpu->currentInstr);
+    cpu->reg[0] = 0; // hardwired zero emulation
+}
+
+struct cpu_t* CreateHart(){
+
 }
 
 void Write4B(uint8_t* memory, uint32_t address, uint32_t value){
