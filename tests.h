@@ -5,7 +5,7 @@
 #include <assert.h>
 #include "rv32.h"
 
-#define TEST_N 8
+#define TEST_N 9
 
 #define VA_NARGS_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12,_13, N, ...) N
 #define VA_NARGS(...) VA_NARGS_IMPL(_, ## __VA_ARGS__, 13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
@@ -229,6 +229,30 @@ void test_SLT(){
 
 }
 
+void test_LOG(){
+    struct cpu_t cpu;
+    Reset(&cpu);
+
+    CODE_HELPER(
+            0x00100093, // addi x1, x0, 1
+            0x00200113, // addi x2, x0, 2
+            0xfff00193, // addi x3, x0, -1
+            0x0020e333, // or x6, x1, x2
+            0x0060c233, // xor x4, x1, x6
+            0x001372b3, // and x5, x6, x1
+            0x0030c3b3 // xor x7, x1, x3
+            )
+    TickN(&cpu, 7);
+    assert(cpu.reg[1] == 1);
+    assert(cpu.reg[2] == 2);
+    assert(cpu.reg[3] == -1);
+    assert(cpu.reg[4] == 2);
+    assert(cpu.reg[5] == 1);
+    assert(cpu.reg[6] == 3);
+    assert(cpu.reg[7] == 0xFFFFFFFE);
+
+}
+
 void TestRunner(){
      typedef void(*testfptr)();
      testfptr tests[TEST_N] = {
@@ -239,7 +263,8 @@ void TestRunner(){
              &test_SHIFTI,
              &test_SUB,
              &test_SHIFT,
-             &test_SLT
+             &test_SLT,
+             &test_LOG,
      };
 
      for(int i = 0; i < TEST_N; i++){

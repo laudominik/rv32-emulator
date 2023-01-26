@@ -117,6 +117,18 @@ void SLTU(struct cpu_t* cpu, struct instr_t* instr){
     cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] < cpu->reg[instr->rs2No];
 }
 
+void XOR(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] ^ cpu->reg[instr->rs2No];
+}
+
+void OR(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] | cpu->reg[instr->rs2No];
+}
+
+void AND(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] & cpu->reg[instr->rs2No];
+}
+
 void DecodeCallback(struct instr_t* instr){
 
     instr->callback = NULL;
@@ -169,7 +181,10 @@ void DecodeCallback(struct instr_t* instr){
                     instr->callback = &SLT;
                     break;
                 case 0b011:
-                    instr->callback = &SLTIU;
+                    instr->callback = &SLTU;
+                    break;
+                case 0b100:
+                    instr->callback = &XOR;
                     break;
                 case 0b101:
                     if(instr->funct7 == 0){
@@ -178,7 +193,12 @@ void DecodeCallback(struct instr_t* instr){
                         instr->callback = &SRA;
                     }
                     break;
-
+                case 0b110:
+                    instr->callback = &OR;
+                    break;
+                case 0b111:
+                    instr->callback = &AND;
+                    break;
             }
     }
 }
@@ -245,7 +265,7 @@ void Tick(struct cpu_t* cpu){
 }
 
 struct cpu_t* CreateHart(){
-
+    return NULL;
 }
 
 void Write4B(uint8_t* memory, uint32_t address, uint32_t value){
