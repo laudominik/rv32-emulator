@@ -3,5 +3,5 @@ echo "assembling... ".$1
 riscv64-unknown-elf-as -march=rv32im -mabi=ilp32 $1
 echo "copying from elf... "
 riscv64-unknown-elf-objcopy -O binary a.out a.bin
-echo "success \n"
-hexdump -C a.bin
+echo "success \n\n>>>>dump<<<<"
+hexdump -e '1/4 "  %08x" "\n"' a.bin
