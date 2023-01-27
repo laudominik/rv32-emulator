@@ -29,6 +29,14 @@ struct instr_t {
 
 };
 
+enum Exception {
+    NONE,
+    BREAKPOINT,
+    ENVIRONMENT_CALL_FROM_U_MODE,
+    ENVIRONMENT_CALL_FROM_S_MODE,
+    ENVIRONMENT_CALL_FROM_M_MODE
+};
+
 struct cpu_t {
     uint32_t reg[32]; // GPR
     uint32_t PC;
@@ -37,11 +45,14 @@ struct cpu_t {
     struct instr_t currentInstr;
 
     uint8_t memory[1024];
+
+    enum Exception exceptionCalled;
 };
 
 void Reset(struct cpu_t* cpu){
     cpu->reg[0] = 0;
     cpu->PC = 0;
+    cpu->exceptionCalled = NONE;
 }
 
 uint32_t SignExtend(uint32_t num, uint8_t bitNo){
@@ -163,6 +174,24 @@ void LW(struct cpu_t* cpu, struct instr_t* instr){
     cpu->reg[instr->rdNo] = b0 + (b1 << 8) + (b2 << 16) + (b3 << 24);
 }
 
+void SB(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->memory[instr->immS + cpu->reg[instr->rs1No]] = cpu->reg[instr->rs2No] & 0xFF;
+}
+
+void SH(struct cpu_t* cpu, struct  instr_t* instr){
+    uint32_t address = instr->immS + cpu->reg[instr->rs1No];
+    cpu->memory[address] = cpu->reg[instr->rs2No] & 0xFF;
+    cpu->memory[address + 1] = ((cpu->reg[instr->rs2No] >> 8) & 0xFF);
+}
+
+void SW(struct cpu_t* cpu, struct instr_t* instr){
+    uint32_t address = instr->immS + cpu->reg[instr->rs1No];
+    cpu->memory[address] = cpu->reg[instr->rs2No] & 0xFF;
+    cpu->memory[address + 1] = ((cpu->reg[instr->rs2No] >> 8) & 0xFF);
+    cpu->memory[address + 2] = ((cpu->reg[instr->rs2No] >> 16) & 0xFF);
+    cpu->memory[address + 3] = ((cpu->reg[instr->rs2No] >> 24) & 0xFF);
+}
+
 void DecodeCallback(struct instr_t* instr){
 
     instr->callback = NULL;
@@ -253,6 +282,20 @@ void DecodeCallback(struct instr_t* instr){
                     instr->callback = &AND;
                     break;
             }
+            break;
+        case 0b0100011:
+            switch (instr->funct3) {
+                case 0b000:
+                    instr->callback = &SB;
+                    break;
+                case 0b001:
+                    instr->callback = &SH;
+                    break;
+                case 0b010:
+                    instr->callback = &SW;
+                    break;
+            }
+            break;
     }
 }
 
@@ -267,8 +310,8 @@ void Decode(struct instr_t* currentInstr, uint32_t instruction) {
 
     // immediate parts
     currentInstr->immPartI = (instruction >> 20) & 0x7FF;
-    currentInstr->immPartS[0] = (instruction >> 6) & 0x1F;
-    currentInstr->immPartS[1] = (instruction >> 24) & 0x7F;
+    currentInstr->immPartS[0] = (instruction >> 7) & 0x1F;
+    currentInstr->immPartS[1] = (instruction >> 25) & 0x7F;
     currentInstr->immPartB[0] = (instruction >> 6) & 0x1;
     currentInstr->immPartB[1] = (instruction >> 7) & 0xF;
     currentInstr->immPartB[2] = (instruction >> 24) & 0x3F;
@@ -315,6 +358,10 @@ void Tick(struct cpu_t* cpu){
     }
     cpu->currentInstr.callback(cpu, &cpu->currentInstr);
     cpu->reg[0] = 0; // hardwired zero emulation
+
+    if(cpu->exceptionCalled != NONE){
+        assert(0);
+    }
 }
 
 struct cpu_t* CreateHart(){

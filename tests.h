@@ -5,7 +5,7 @@
 #include <assert.h>
 #include "rv32.h"
 
-#define TEST_N 12
+#define TEST_N 13
 
 #define VA_NARGS_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12,_13, N, ...) N
 #define VA_NARGS(...) VA_NARGS_IMPL(_, ## __VA_ARGS__, 13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
@@ -314,6 +314,30 @@ void test_LW(){
     assert(cpu.reg[1] == 0x00002083);
     assert(cpu.reg[3] == 0x00012183);
 
+}
+
+void test_STORE(){
+    struct cpu_t cpu;
+    Reset(&cpu);
+
+    CODE_HELPER(
+            0x12300093, // addi x1, x0, 0x123
+            0x00c09093, // slli x1, x1, 12
+            0x25608093, // addi x1, x1, 0x256
+            0x20100023, // sb x1, 512(x0)
+            0x04101023, // sh x1, 64(x0)
+            0x2c102c23  // sw x1, 728(x0)
+            )
+
+    TickN(&cpu, 6);
+
+    assert(cpu.memory[512] == 0x56);
+    assert(cpu.memory[64] == 0x56);
+    assert(cpu.memory[65] == 0x32);
+    assert(cpu.memory[728] == 0x56);
+    assert(cpu.memory[729] == 0x32);
+    assert(cpu.memory[730] == 0x12);
+    assert(cpu.memory[731] == 0x00);
 
 }
 
@@ -332,7 +356,8 @@ void TestRunner(){
              &test_LOG,
              &test_LB,
              &test_LH,
-             &test_LW
+             &test_LW,
+             &test_STORE
      };
 
      for(int i = 0; i < TEST_N; i++){
