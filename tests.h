@@ -5,7 +5,7 @@
 #include <assert.h>
 #include "rv32.h"
 
-#define TEST_N 9
+#define TEST_N 12
 
 #define VA_NARGS_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12,_13, N, ...) N
 #define VA_NARGS(...) VA_NARGS_IMPL(_, ## __VA_ARGS__, 13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
@@ -253,6 +253,71 @@ void test_LOG(){
 
 }
 
+void test_LB(){
+    struct cpu_t cpu;
+    Reset(&cpu);
+
+    CODE_HELPER(
+        0x20000083, //lb x1, 512(x0)
+        0x00100113, // addi x2, x0, 1
+        0x20010183, // lb x3, 512(x2)
+        0x20004203, // lbu x4, 512(x0)
+        0x10224283 // lbu x5, 258(x4)
+            )
+    WriteB(cpu.memory, 512, -1);
+    WriteB(cpu.memory, 513, 5);
+
+    TickN(&cpu, 5);
+
+    assert(cpu.reg[1] == -1);
+    assert(cpu.reg[2] == 1);
+    assert(cpu.reg[3] == 5);
+    assert(cpu.reg[4] == 0xFF);
+    assert(cpu.reg[5] == 5);
+}
+
+void test_LH(){
+    struct cpu_t cpu;
+    Reset(&cpu);
+
+    CODE_HELPER(
+            0x20001083, // lh x1, 512(x0)
+            0x20109103, // lh x2, 513(x1)
+            0x20005183, // lhu x3, 512(x0)
+            0x2011d203  // lhu x4, 513(x3)
+    )
+
+    Write2B(cpu.memory, 512, 1);
+    Write2B(cpu.memory, 514, -1);
+
+    TickN(&cpu, 4);
+
+    assert(cpu.reg[1] == 1);
+    assert(cpu.reg[2] == -1);
+    assert(cpu.reg[3] == 1);
+    assert(cpu.reg[4] == 0xFFFF);
+
+}
+
+void test_LW(){
+    struct cpu_t cpu;
+    Reset(&cpu);
+
+    CODE_HELPER(
+            0x00002083, // lw x1, 0(x0)
+            0x00800113, // addi x2, x0, 8
+            0x00012183 // lw x3, 0(x2)
+    )
+
+    TickN(&cpu, 3);
+
+    assert(cpu.reg[1] == 0x00002083);
+    assert(cpu.reg[3] == 0x00012183);
+
+
+}
+
+
 void TestRunner(){
      typedef void(*testfptr)();
      testfptr tests[TEST_N] = {
@@ -265,6 +330,9 @@ void TestRunner(){
              &test_SHIFT,
              &test_SLT,
              &test_LOG,
+             &test_LB,
+             &test_LH,
+             &test_LW
      };
 
      for(int i = 0; i < TEST_N; i++){

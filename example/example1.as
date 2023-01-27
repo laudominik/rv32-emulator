@@ -1,7 +1,10 @@
 .global _boot
+
 .text
 
 _boot:
-	addi x1, x0, 1
-    addi x2, x0, 2
-    addi x3, x0, -1
+	lw x1, 0(x0)
+	addi x2, x0, 8
+	lw x3, 0(x)
+
+

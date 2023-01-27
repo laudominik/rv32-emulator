@@ -129,10 +129,63 @@ void AND(struct cpu_t* cpu, struct instr_t* instr){
     cpu->reg[instr->rdNo] = cpu->reg[instr->rs1No] & cpu->reg[instr->rs2No];
 }
 
+void LB(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = SignExtend(cpu->memory[cpu->reg[instr->rs1No] + instr->immI], 7);
+}
+
+void LBU(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = cpu->memory[cpu->reg[instr->rs1No] + instr->immI];
+}
+
+void LH(struct cpu_t* cpu, struct instr_t* instr){
+    uint32_t address = cpu->reg[instr->rs1No] + instr->immI;
+    uint16_t lo = cpu->memory[address];
+    uint16_t hi = cpu->memory[address + 1];
+
+    cpu->reg[instr->rdNo] = SignExtend(lo + (hi << 8), 15);
+}
+
+void LHU(struct cpu_t* cpu, struct instr_t* instr){
+    uint32_t address = cpu->reg[instr->rs1No] + instr->immI;
+    uint16_t lo = cpu->memory[address];
+    uint16_t hi = cpu->memory[address + 1];
+
+    cpu->reg[instr->rdNo] = lo + (hi << 8);
+}
+
+void LW(struct cpu_t* cpu, struct instr_t* instr){
+    uint32_t address = cpu->reg[instr->rs1No] + instr->immI;
+    uint32_t b0 = cpu->memory[address];
+    uint32_t b1 = cpu->memory[address + 1];
+    uint32_t b2 = cpu->memory[address + 2];
+    uint32_t b3 = cpu->memory[address + 3];
+
+    cpu->reg[instr->rdNo] = b0 + (b1 << 8) + (b2 << 16) + (b3 << 24);
+}
+
 void DecodeCallback(struct instr_t* instr){
 
     instr->callback = NULL;
     switch (instr->opcode) {
+        case 0b0000011:
+            switch (instr->funct3) {
+                case 0b000:
+                    instr->callback = &LB;
+                    break;
+                case 0b001:
+                    instr->callback = &LH;
+                    break;
+                case 0b010:
+                    instr->callback = &LW;
+                    break;
+                case 0b100:
+                    instr->callback = &LBU;
+                    break;
+                case 0b101:
+                    instr->callback = &LHU;
+                    break;
+            }
+            break;
         case 0b0010011:
             switch (instr->funct3) {
                 case 0b000:
@@ -273,4 +326,13 @@ void Write4B(uint8_t* memory, uint32_t address, uint32_t value){
     memory[address + 1] = (value >> 8) & 0xFF;
     memory[address + 2] = (value >> 16) & 0xFF;
     memory[address + 3] = (value >> 24) & 0xFF;
+}
+
+void WriteB(uint8_t* memory, uint32_t address, uint8_t value){
+    memory[address] = value;
+}
+
+void Write2B(uint8_t* memory, uint32_t address, uint16_t value){
+    memory[address] = value & 0xFF;
+    memory[address + 1] = (value >> 8) & 0xFF;
 }
