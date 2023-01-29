@@ -20,7 +20,7 @@ struct instr_t {
     uint16_t immPartS[2];
     uint32_t immPartU;
     uint8_t immPartB[4];
-    uint8_t immPartJ[4];
+    uint16_t immPartJ[4];
 
     uint32_t immI, immS, immB, immU, immJ;
 
@@ -200,6 +200,11 @@ void AUIPC(struct cpu_t* cpu, struct instr_t* instr){
     cpu->reg[instr->rdNo] = instr->immU + cpu->PC;
 }
 
+void JAL(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = cpu->PC + 4;
+    cpu->PC += instr->immJ - 4;
+}
+
 
 void DecodeCallback(struct instr_t* instr){
 
@@ -311,6 +316,9 @@ void DecodeCallback(struct instr_t* instr){
         case 0b0010111:
             instr->callback = &AUIPC;
             break;
+        case 0b1101111:
+            instr->callback = &JAL;
+            break;
     }
 }
 
@@ -332,6 +340,10 @@ void Decode(struct instr_t* currentInstr, uint32_t instruction) {
     currentInstr->immPartB[2] = (instruction >> 24) & 0x3F;
     currentInstr->immPartB[3] = (instruction >> 30) & 0x1;
     currentInstr->immPartU = (instruction >> 12) & 0xFFFFF;
+    currentInstr->immPartJ[0] = (instruction >> 12) & 0xFF;
+    currentInstr->immPartJ[1] = (instruction >> 20) & 0x1;
+    currentInstr->immPartJ[2] = (instruction >> 21) & 0x3FF;
+    currentInstr->immPartJ[3] = (instruction >> 31) & 0x1;
 
     // immediate values, TO CHECK CAREFULLY
     currentInstr->immI = SignExtend(currentInstr->immPartI, 10);
@@ -346,7 +358,7 @@ void Decode(struct instr_t* currentInstr, uint32_t instruction) {
             (currentInstr->immPartJ[2] << 1) +
             (currentInstr->immPartJ[1] << 11) +
             (currentInstr->immPartJ[0] << 12) +
-            (currentInstr->immPartJ[3] << 20), 19);
+            (currentInstr->immPartJ[3] << 20), 20);
 
     currentInstr->funct3 = (instruction >> 12) & 0x7;
     currentInstr->funct7 = (instruction >> 25) & 0x7F;
@@ -368,12 +380,13 @@ void Tick(struct cpu_t* cpu){
 
     uint32_t instruction = Fetch(cpu);
     Decode(&cpu->currentInstr,instruction);
-    cpu->PC += 4;
+
     if(cpu->currentInstr.callback == NULL) {
         assert(0);
     }
     cpu->currentInstr.callback(cpu, &cpu->currentInstr);
     cpu->reg[0] = 0; // hardwired zero emulation
+    cpu->PC += 4; // increment, unlike in x86, happens AFTER the instruction execution
 
     if(cpu->exceptionCalled != NONE){
         assert(0);

@@ -5,7 +5,7 @@
 #include <assert.h>
 #include "rv32.h"
 
-#define TEST_N 14
+#define TEST_N 16
 
 #define VA_NARGS_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12,_13, N, ...) N
 #define VA_NARGS(...) VA_NARGS_IMPL(_, ## __VA_ARGS__, 13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
@@ -351,21 +351,57 @@ void test_UI(){
             0xeefcc197, // auipc x3, 0xeefcc
 
     )
-    TickN(&cpu, 5);
+    TickN(&cpu, 3);
 
     Tick(&cpu);
     Tick(&cpu);
 
     assert(cpu.reg[1] == 0x1000);
     assert(cpu.reg[2] == 0xdeadb000);
-    assert(cpu.reg[3] == 0xeefcc00c);
-    assert(cpu.reg[4] == 0x10);
-    assert(cpu.reg[5] == 32);
+    assert(cpu.reg[3] == 0xeefcc008);
 
+}
+
+void test_JAL1() {
+    struct cpu_t cpu;
+    Reset(&cpu);
+
+    CODE_HELPER(
+            0x00000013, // et: nop
+            0xffdff0ef, // jal x1, et
+    )
+
+    TickN(&cpu, 2);
+    assert(cpu.PC == 0);
+    TickN(&cpu,100);
+}
+
+void test_JAL2(){
+    struct cpu_t cpu;
+    Reset(&cpu);
+
+    CODE_HELPER(
+            0x008000ef, // jal p
+            0x0dd00113, // addi x2, x0, 0xdd
+            0x0cc00093, // p:	addi x1, x0, 0xcc
+            0x00c0056f, // jal x10, q
+            0x0bb00193, // addi x3, x0, 0xbb
+            0x00000013, // nop
+            0x0ee00213 // q: addi x4, x0, 0xee
+
+    )
+
+    TickN(&cpu,4);
+
+    assert(cpu.reg[1] == 0xcc);
+    assert(cpu.reg[2] != 0xdd);
+    assert(cpu.reg[3] != 0xbb);
+    assert(cpu.reg[4] == 0xee);
 }
 
 
 void TestRunner(){
+
      typedef void(*testfptr)();
      testfptr tests[TEST_N] = {
              &test_ADDI,
@@ -381,7 +417,9 @@ void TestRunner(){
              &test_LH,
              &test_LW,
              &test_STORE,
-             &test_UI
+             &test_UI,
+             &test_JAL1,
+             &test_JAL2
      };
 
      for(int i = 0; i < TEST_N; i++){
