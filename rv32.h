@@ -192,6 +192,15 @@ void SW(struct cpu_t* cpu, struct instr_t* instr){
     cpu->memory[address + 3] = ((cpu->reg[instr->rs2No] >> 24) & 0xFF);
 }
 
+void LUI(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = instr->immU;
+}
+
+void AUIPC(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = instr->immU + cpu->PC;
+}
+
+
 void DecodeCallback(struct instr_t* instr){
 
     instr->callback = NULL;
@@ -296,6 +305,12 @@ void DecodeCallback(struct instr_t* instr){
                     break;
             }
             break;
+        case 0b0110111:
+            instr->callback = &LUI;
+            break;
+        case 0b0010111:
+            instr->callback = &AUIPC;
+            break;
     }
 }
 
@@ -316,6 +331,7 @@ void Decode(struct instr_t* currentInstr, uint32_t instruction) {
     currentInstr->immPartB[1] = (instruction >> 7) & 0xF;
     currentInstr->immPartB[2] = (instruction >> 24) & 0x3F;
     currentInstr->immPartB[3] = (instruction >> 30) & 0x1;
+    currentInstr->immPartU = (instruction >> 12) & 0xFFFFF;
 
     // immediate values, TO CHECK CAREFULLY
     currentInstr->immI = SignExtend(currentInstr->immPartI, 10);

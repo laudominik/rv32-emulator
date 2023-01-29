@@ -1,7 +1,8 @@
 #!/bin/sh
 echo "assembling... ".$1 &&
-riscv64-unknown-elf-as -march=rv32im -mabi=ilp32 $1 &&
+riscv64-unknown-elf-as -march=rv32im -mabi=ilp32 $1 -o a.out &&
 echo "copying from elf... " &&
-riscv64-unknown-elf-objcopy -O binary a.out a.bin &&
+riscv64-unknown-elf-gcc -o a a.out -nostdlib -static -march=rv32im &&
+riscv64-unknown-elf-objcopy -O binary a a.bin &&
 echo "success \n\n>>>>dump<<<<" &&
 hexdump -e '1/4 "  %08x" "\n"' a.bin

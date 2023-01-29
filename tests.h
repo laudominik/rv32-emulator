@@ -5,7 +5,7 @@
 #include <assert.h>
 #include "rv32.h"
 
-#define TEST_N 13
+#define TEST_N 14
 
 #define VA_NARGS_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12,_13, N, ...) N
 #define VA_NARGS(...) VA_NARGS_IMPL(_, ## __VA_ARGS__, 13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
@@ -341,6 +341,29 @@ void test_STORE(){
 
 }
 
+void test_UI(){
+    struct cpu_t cpu;
+    Reset(&cpu);
+
+    CODE_HELPER(
+            0x000010b7, // _start: lui x1, 1
+            0xdeadb137, // lui x2, 0xdeadb
+            0xeefcc197, // auipc x3, 0xeefcc
+
+    )
+    TickN(&cpu, 5);
+
+    Tick(&cpu);
+    Tick(&cpu);
+
+    assert(cpu.reg[1] == 0x1000);
+    assert(cpu.reg[2] == 0xdeadb000);
+    assert(cpu.reg[3] == 0xeefcc00c);
+    assert(cpu.reg[4] == 0x10);
+    assert(cpu.reg[5] == 32);
+
+}
+
 
 void TestRunner(){
      typedef void(*testfptr)();
@@ -357,7 +380,8 @@ void TestRunner(){
              &test_LB,
              &test_LH,
              &test_LW,
-             &test_STORE
+             &test_STORE,
+             &test_UI
      };
 
      for(int i = 0; i < TEST_N; i++){
