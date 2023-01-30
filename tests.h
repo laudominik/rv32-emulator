@@ -5,7 +5,7 @@
 #include <assert.h>
 #include "rv32.h"
 
-#define TEST_N 16
+#define TEST_N 18
 
 #define VA_NARGS_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12,_13, N, ...) N
 #define VA_NARGS(...) VA_NARGS_IMPL(_, ## __VA_ARGS__, 13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
@@ -399,6 +399,53 @@ void test_JAL2(){
     assert(cpu.reg[4] == 0xee);
 }
 
+void test_JALR(){
+    struct cpu_t cpu;
+    Reset(&cpu);
+
+    CODE_HELPER(
+            0x00c000ef, // jal x1, fun
+            0x0ee00393, // addi x7, x0, 0xee
+            0x00418067, // jalr x0, 4(x3)
+            0x0dd00313, // fun: addi x6, x0, 0xdd
+            0x000081e7, // jalr x3, 0(x1)
+            0x0cc00313, // addi x6, x0, 0xcc
+            0x0aa00413  // end: addi x8, x0, 0xaa
+            )
+
+    TickN(&cpu,6);
+    assert(cpu.reg[1] == 4);
+    assert(cpu.reg[3] == 20);
+    assert(cpu.reg[6] == 0xdd);
+    assert(cpu.reg[7] == 0xee);
+    assert(cpu.reg[8] == 0xaa);
+}
+
+void test_BRANCH1(){
+    struct cpu_t cpu;
+    Reset(&cpu);
+
+    CODE_HELPER(
+            0x00100093, // addi x1, x0, 1
+            0xfff00113, // addi x2, x0, -1
+            0x00209463, // bne x1, x2, l1
+            0x01c000ef, // jal end
+            0x0dd00193, // l1: addi x3, x0, 0xdd
+            0x0020c863, // blt x1, x2, l2
+            0x0ee00213, // addi x4, x0, 0xee
+            0x0020e463, // bltu x1, x2, l2
+            0x008000ef, // jal end
+            0x0aa00293  // l2: addi x5, x0, 0xaa
+                            // end:
+    )
+
+    TickN(&cpu,8);
+
+    assert(cpu.reg[3] == 0xdd);
+    assert(cpu.reg[4] == 0xee);
+    assert(cpu.reg[5] == 0xaa);
+
+}
 
 void TestRunner(){
 
@@ -419,7 +466,9 @@ void TestRunner(){
              &test_STORE,
              &test_UI,
              &test_JAL1,
-             &test_JAL2
+             &test_JAL2,
+             &test_JALR,
+             &test_BRANCH1
      };
 
      for(int i = 0; i < TEST_N; i++){

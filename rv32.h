@@ -205,6 +205,40 @@ void JAL(struct cpu_t* cpu, struct instr_t* instr){
     cpu->PC += instr->immJ - 4;
 }
 
+void JALR(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = cpu->PC + 4;
+    cpu->PC = cpu->reg[instr->rs1No] + instr->immI - 4;
+}
+
+void BEQ(struct cpu_t* cpu, struct instr_t* instr){
+    if(cpu->reg[instr->rs1No] == cpu->reg[instr->rs2No])
+        cpu-> PC += instr->immB - 4;
+}
+
+void BNE(struct cpu_t* cpu, struct instr_t* instr){
+    if(cpu->reg[instr->rs1No] != cpu->reg[instr->rs2No])
+        cpu-> PC += instr->immB - 4;
+}
+
+void BLT(struct cpu_t* cpu, struct instr_t* instr){
+    if((int32_t) cpu->reg[instr->rs1No] < (int32_t) cpu->reg[instr->rs2No])
+        cpu-> PC += instr->immB - 4;
+}
+
+void BGE(struct cpu_t* cpu, struct instr_t* instr){
+    if((int32_t) cpu->reg[instr->rs1No] >= (int32_t) cpu->reg[instr->rs2No])
+        cpu->PC += instr->immB - 4;
+}
+
+void BLTU(struct cpu_t* cpu, struct instr_t* instr){
+    if(cpu->reg[instr->rs1No] < cpu->reg[instr->rs2No])
+        cpu-> PC += instr->immB - 4;
+}
+
+void BGEU(struct cpu_t* cpu, struct instr_t* instr){
+    if(cpu->reg[instr->rs1No] >= cpu->reg[instr->rs2No])
+        cpu->PC += instr->immB - 4;
+}
 
 void DecodeCallback(struct instr_t* instr){
 
@@ -319,6 +353,32 @@ void DecodeCallback(struct instr_t* instr){
         case 0b1101111:
             instr->callback = &JAL;
             break;
+        case 0b1100111:
+            instr->callback = &JALR;
+            break;
+
+        case 0b1100011:
+            switch (instr->funct3) {
+                case 0b000:
+                    instr->callback = &BEQ;
+                    break;
+                case 0b001:
+                    instr->callback = &BNE;
+                    break;
+                case 0b100:
+                    instr->callback = &BLT;
+                    break;
+                case 0b101:
+                    instr->callback = &BGE;
+                    break;
+                case 0b110:
+                    instr->callback = &BLTU;
+                    break;
+                case 0b111:
+                    instr->callback = &BGEU;
+                    break;
+            }
+            break;
     }
 }
 
@@ -333,13 +393,17 @@ void Decode(struct instr_t* currentInstr, uint32_t instruction) {
 
     // immediate parts
     currentInstr->immPartI = (instruction >> 20) & 0x7FF;
+
     currentInstr->immPartS[0] = (instruction >> 7) & 0x1F;
     currentInstr->immPartS[1] = (instruction >> 25) & 0x7F;
-    currentInstr->immPartB[0] = (instruction >> 6) & 0x1;
-    currentInstr->immPartB[1] = (instruction >> 7) & 0xF;
-    currentInstr->immPartB[2] = (instruction >> 24) & 0x3F;
-    currentInstr->immPartB[3] = (instruction >> 30) & 0x1;
+
+    currentInstr->immPartB[0] = (instruction >> 7) & 0x1;
+    currentInstr->immPartB[1] = (instruction >> 8) & 0xF;
+    currentInstr->immPartB[2] = (instruction >> 25) & 0x3F;
+    currentInstr->immPartB[3] = (instruction >> 31) & 0x1;
+
     currentInstr->immPartU = (instruction >> 12) & 0xFFFFF;
+
     currentInstr->immPartJ[0] = (instruction >> 12) & 0xFF;
     currentInstr->immPartJ[1] = (instruction >> 20) & 0x1;
     currentInstr->immPartJ[2] = (instruction >> 21) & 0x3FF;
@@ -348,12 +412,15 @@ void Decode(struct instr_t* currentInstr, uint32_t instruction) {
     // immediate values, TO CHECK CAREFULLY
     currentInstr->immI = SignExtend(currentInstr->immPartI, 10);
     currentInstr->immS = SignExtend(currentInstr->immPartS[0] + (currentInstr->immPartS[1] << 5), 10);
+
     currentInstr->immB = SignExtend(
             (currentInstr->immPartB[1] << 1) +
             (currentInstr->immPartB[2] << 5) +
             (currentInstr->immPartB[0] << 11) +
             (currentInstr->immPartB[3] << 12), 12);
+
     currentInstr->immU = SignExtend((currentInstr->immPartU << 12), 31);
+
     currentInstr->immJ = SignExtend(
             (currentInstr->immPartJ[2] << 1) +
             (currentInstr->immPartJ[1] << 11) +
