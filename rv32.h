@@ -34,13 +34,16 @@ enum Exception {
     BREAKPOINT,
     ENVIRONMENT_CALL_FROM_U_MODE,
     ENVIRONMENT_CALL_FROM_S_MODE,
-    ENVIRONMENT_CALL_FROM_M_MODE
+    ENVIRONMENT_CALL_FROM_M_MODE,
+    ILLEGAL_INSTRUCTION
 };
 
 struct cpu_t {
     uint32_t reg[32]; // GPR
     uint32_t PC;
     uint32_t csr[4096];
+
+    uint32_t mstatus;
 
     struct instr_t currentInstr;
 
@@ -60,6 +63,16 @@ uint32_t SignExtend(uint32_t num, uint8_t bitNo){
     uint32_t orMask = (-sign) << bitNo;
 
     return num | orMask;
+}
+
+int CheckPermissions(uint32_t address, int isWrite){
+
+    uint8_t rw = (address >> 10) & 0x3;
+    uint8_t lowPriv = (address >> 8) & 0x3;
+
+    if(rw == 11 && isWrite) return 0;
+
+    return 1;
 }
 
 void ADDI(struct cpu_t* cpu, struct instr_t* instr){
@@ -242,6 +255,10 @@ void BGEU(struct cpu_t* cpu, struct instr_t* instr){
 }
 
 void CSRRW(struct cpu_t* cpu, struct instr_t* instr){
+    if(!CheckPermissions(instr->immI, instr->rdNo != 0)) {
+        cpu->exceptionCalled = ILLEGAL_INSTRUCTION;
+        return;
+    }
     uint32_t temp = cpu->csr[instr->immI];
     cpu->csr[instr->immI] = cpu->reg[instr->rs1No];
     cpu->reg[instr->rdNo] = temp;
@@ -547,6 +564,7 @@ void Tick(struct cpu_t* cpu){
     if(cpu->exceptionCalled != NONE){
         assert(0);
     }
+    cpu->exceptionCalled == NONE;
 }
 
 struct cpu_t* CreateHart(){
