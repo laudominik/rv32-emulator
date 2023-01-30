@@ -5,7 +5,7 @@
 #include <assert.h>
 #include "rv32.h"
 
-#define TEST_N 18
+#define TEST_N 19
 
 #define VA_NARGS_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12,_13, N, ...) N
 #define VA_NARGS(...) VA_NARGS_IMPL(_, ## __VA_ARGS__, 13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
@@ -444,7 +444,39 @@ void test_BRANCH1(){
     assert(cpu.reg[3] == 0xdd);
     assert(cpu.reg[4] == 0xee);
     assert(cpu.reg[5] == 0xaa);
+}
 
+void test_CSR(){
+    struct cpu_t cpu;
+    Reset(&cpu);
+
+    CODE_HELPER(
+            0x00700093, // addi x1, x0, 7
+            0x0cc00113, // addi x2, x0, 0xcc
+            0x00009073, // csrrw x0, 0, x1
+
+            0x0012d073, // csrrwi x0, 1, 5
+            0x002f5073, // csrrwi x0, 2, 0x1e
+            0x000121f3, // csrrs x3, 0, x2
+
+            0x0010b273, // csrrc x4, 1, x1
+            0x0020e2f3  // csrrsi x5, 2, 1
+    )
+
+    TickN(&cpu, 3);
+    assert(cpu.reg[1] == 7);
+    assert(cpu.reg[2] == 0xcc);
+    assert(cpu.csr[0] == 7);
+
+    TickN(&cpu,3);
+    assert(cpu.csr[1] == 5);
+    assert(cpu.csr[2] == 0x1e);
+    assert(cpu.csr[0] == 0xcf);
+    assert(cpu.reg[3] == 7);
+
+    TickN(&cpu, 2);
+    assert(cpu.csr[1] == 0);
+    assert(cpu.csr[2] == 0x1F);
 }
 
 void TestRunner(){
@@ -468,7 +500,8 @@ void TestRunner(){
              &test_JAL1,
              &test_JAL2,
              &test_JALR,
-             &test_BRANCH1
+             &test_BRANCH1,
+             &test_CSR
      };
 
      for(int i = 0; i < TEST_N; i++){

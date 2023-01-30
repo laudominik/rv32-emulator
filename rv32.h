@@ -206,8 +206,9 @@ void JAL(struct cpu_t* cpu, struct instr_t* instr){
 }
 
 void JALR(struct cpu_t* cpu, struct instr_t* instr){
-    cpu->reg[instr->rdNo] = cpu->PC + 4;
+    uint32_t temp = cpu->PC + 4;
     cpu->PC = cpu->reg[instr->rs1No] + instr->immI - 4;
+    cpu->reg[instr->rdNo] = temp;
 }
 
 void BEQ(struct cpu_t* cpu, struct instr_t* instr){
@@ -238,6 +239,72 @@ void BLTU(struct cpu_t* cpu, struct instr_t* instr){
 void BGEU(struct cpu_t* cpu, struct instr_t* instr){
     if(cpu->reg[instr->rs1No] >= cpu->reg[instr->rs2No])
         cpu->PC += instr->immB - 4;
+}
+
+void CSRRW(struct cpu_t* cpu, struct instr_t* instr){
+    uint32_t temp = cpu->csr[instr->immI];
+    cpu->csr[instr->immI] = cpu->reg[instr->rs1No];
+    cpu->reg[instr->rdNo] = temp;
+}
+
+void CSRRS(struct cpu_t* cpu, struct instr_t* instr){
+    uint32_t temp = cpu->csr[instr->immI];
+    cpu->csr[instr->immI] |= cpu->reg[instr->rs1No];
+    cpu->reg[instr->rdNo] = temp;
+}
+
+void CSRRC(struct cpu_t* cpu, struct instr_t* instr){
+    uint32_t temp = cpu->csr[instr->immI];
+    cpu->csr[instr->immI] &= ~cpu->reg[instr->rs1No];
+    cpu->reg[instr->rdNo] = temp;
+}
+
+void CSRRWI(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = cpu->csr[instr->immI];
+    cpu->csr[instr->immI] = instr->rs1No;
+}
+
+void CSRRSI(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = cpu->csr[instr->immI];
+    cpu->csr[instr->immI] |= instr->rs1No;
+}
+
+void CSRRCI(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->reg[instr->rdNo] = cpu->csr[instr->immI];
+    cpu->csr[instr->immI] &= ~instr->rs1No;
+}
+
+void ECALL(struct cpu_t* cpu, struct instr_t* instr){
+    assert(0);
+}
+
+void EBREAK(struct cpu_t* cpu, struct instr_t* instr){
+    cpu->exceptionCalled = BREAKPOINT;
+    assert(0);
+}
+
+void FENCE(struct cpu_t* cpu, struct instr_t* instr){
+    assert(0);
+}
+
+void FENCEI(struct cpu_t* cpu, struct instr_t* instr){
+    assert(0);
+}
+
+void URET(struct cpu_t* cpu, struct instr_t* instr){
+    assert(0);
+}
+
+void SRET(struct cpu_t* cpu, struct instr_t* instr){
+    assert(0);
+}
+
+void MRET(struct cpu_t* cpu, struct instr_t* instr){
+    assert(0);
+}
+
+void WFI(struct cpu_t* cpu, struct instr_t* instr){
+
 }
 
 void DecodeCallback(struct instr_t* instr){
@@ -376,6 +443,28 @@ void DecodeCallback(struct instr_t* instr){
                     break;
                 case 0b111:
                     instr->callback = &BGEU;
+                    break;
+            }
+            break;
+        case 0b1110011:
+            switch (instr->funct3) {
+                case 0b001:
+                    instr->callback = &CSRRW;
+                    break;
+                case 0b010:
+                    instr->callback = &CSRRS;
+                    break;
+                case 0b011:
+                    instr->callback = &CSRRC;
+                    break;
+                case 0b101:
+                    instr->callback = &CSRRWI;
+                    break;
+                case 0b110:
+                    instr->callback = &CSRRSI;
+                    break;
+                case 0b111:
+                    instr->callback = &CSRRCI;
                     break;
             }
             break;
