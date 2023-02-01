@@ -5,7 +5,7 @@
 #include <assert.h>
 #include "rv32.h"
 
-#define TEST_N 19
+#define TEST_N 20
 
 #define VA_NARGS_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12,_13, N, ...) N
 #define VA_NARGS(...) VA_NARGS_IMPL(_, ## __VA_ARGS__, 13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
@@ -479,6 +479,17 @@ void test_CSR(){
     assert(cpu.csr[2] == 0x1F);
 }
 
+void test_INTERRUPT(){
+    struct cpu_t cpu;
+    Reset(&cpu);
+
+    CODE_HELPER(
+        0x00000073
+            )
+    Tick(&cpu);
+
+}
+
 void TestRunner(){
 
      typedef void(*testfptr)();
@@ -501,7 +512,8 @@ void TestRunner(){
              &test_JAL2,
              &test_JALR,
              &test_BRANCH1,
-             &test_CSR
+             &test_CSR,
+             &test_INTERRUPT
      };
 
      for(int i = 0; i < TEST_N; i++){

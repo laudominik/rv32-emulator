@@ -4,6 +4,35 @@
 #include <stdint.h>
 
 
+#define CSR_MSTATUS     0x300
+#define CSR_MISA        0x301
+#define CSR_MEDELEG     0x302
+#define CSR_MIDELEG     0x303
+#define CSR_MIE         0x304
+#define CSR_MTVEC       0x305
+#define CSR_MCOUNTEREN  0x306
+#define CSR_MSTATUSH    0x310
+#define CSR_MSCRATCH    0x340
+#define CSR_MEPC        0x341
+#define CSR_MCAUSE      0x342
+#define CSR_MTVAL       0x343
+#define CSR_MIP         0x344
+#define CSR_MTINST      0x34A
+#define CSR_MTVAL2      0x34B
+
+#define INTX_NO_EXCEPTION                    0xFF
+#define INT1_MACHINE_SOFTWARE_INTERRUPT      3
+#define INT1_MACHINE_TIMER_INTERRUPT         7
+#define INT1_MACHINE_EXTERNAL_INTERRUPT      11
+
+#define INT0_INSTRUCTION_ADDRESS_MISALIGNED  0
+#define INT0_INSTRUCTION_ACCESS_FAULT        1
+#define INT0_ILLEGAL_INSTRUCTION             2
+#define INT0_BREAKPOINT                      3
+#define INT0_LOAD_ADDRESS_MISALIGNED         4
+#define INT0_ENVIRONMENT_CALL_FROM_U_MODE    8
+#define INT0_ENVIRONMENT_CALL_FROM_M_MODE    11
+
 typedef void (*instr_callback_t)(struct cpu_t*, struct instr_t*);
 
 struct instr_t {
@@ -29,33 +58,27 @@ struct instr_t {
 
 };
 
-enum Exception {
-    NONE,
-    BREAKPOINT,
-    ENVIRONMENT_CALL_FROM_U_MODE,
-    ENVIRONMENT_CALL_FROM_S_MODE,
-    ENVIRONMENT_CALL_FROM_M_MODE,
-    ILLEGAL_INSTRUCTION
-};
-
 struct cpu_t {
     uint32_t reg[32]; // GPR
     uint32_t PC;
-    uint32_t csr[4096];
-
-    uint32_t mstatus;
 
     struct instr_t currentInstr;
-
     uint8_t memory[1024];
 
-    enum Exception exceptionCalled;
+    //CSR
+    uint32_t csr[4096];
+    uint32_t exceptionCalled;
+    uint32_t exceptionInterruptNo;
+
+
 };
 
 void Reset(struct cpu_t* cpu){
     cpu->reg[0] = 0;
     cpu->PC = 0;
-    cpu->exceptionCalled = NONE;
+    cpu->exceptionCalled = INTX_NO_EXCEPTION;
+    cpu->csr[CSR_MISA] = 0x40000100; // implements I extension
+
 }
 
 uint32_t SignExtend(uint32_t num, uint8_t bitNo){
@@ -256,7 +279,8 @@ void BGEU(struct cpu_t* cpu, struct instr_t* instr){
 
 void CSRRW(struct cpu_t* cpu, struct instr_t* instr){
     if(!CheckPermissions(instr->immI, instr->rdNo != 0)) {
-        cpu->exceptionCalled = ILLEGAL_INSTRUCTION;
+        cpu->exceptionCalled = INT0_ILLEGAL_INSTRUCTION;
+        cpu->exceptionInterruptNo = 0;
         return;
     }
     uint32_t temp = cpu->csr[instr->immI];
@@ -292,12 +316,13 @@ void CSRRCI(struct cpu_t* cpu, struct instr_t* instr){
 }
 
 void ECALL(struct cpu_t* cpu, struct instr_t* instr){
-    assert(0);
+    cpu->exceptionCalled = INT0_ENVIRONMENT_CALL_FROM_M_MODE;
+    cpu->exceptionInterruptNo = 0;
 }
 
 void EBREAK(struct cpu_t* cpu, struct instr_t* instr){
-    cpu->exceptionCalled = BREAKPOINT;
-    assert(0);
+    cpu->exceptionCalled = INT0_BREAKPOINT;
+    cpu->exceptionInterruptNo = 0;
 }
 
 void FENCE(struct cpu_t* cpu, struct instr_t* instr){
@@ -465,6 +490,9 @@ void DecodeCallback(struct instr_t* instr){
             break;
         case 0b1110011:
             switch (instr->funct3) {
+                case 0b000:
+                    instr->callback = ECALL;
+                    break;
                 case 0b001:
                     instr->callback = &CSRRW;
                     break;
@@ -549,6 +577,13 @@ uint32_t Fetch(struct cpu_t* cpu) {
            (memory[cpu->PC + 3] << 24);
 }
 
+void HandleException(struct cpu_t* cpu){
+
+    // TODO: check for MIE/UIE
+    cpu->csr[CSR_MCAUSE] = (cpu->exceptionInterruptNo << 31) | (cpu->exceptionCalled);
+
+}
+
 void Tick(struct cpu_t* cpu){
 
     uint32_t instruction = Fetch(cpu);
@@ -561,10 +596,10 @@ void Tick(struct cpu_t* cpu){
     cpu->reg[0] = 0; // hardwired zero emulation
     cpu->PC += 4; // increment, unlike in x86, happens AFTER the instruction execution
 
-    if(cpu->exceptionCalled != NONE){
-        assert(0);
+    if(cpu->exceptionCalled != INTX_NO_EXCEPTION){
+        HandleException(cpu);
     }
-    cpu->exceptionCalled == NONE;
+    cpu->exceptionCalled = INTX_NO_EXCEPTION;
 }
 
 struct cpu_t* CreateHart(){
