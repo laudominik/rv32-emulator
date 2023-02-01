@@ -10,11 +10,12 @@
 #define VA_NARGS_IMPL(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12,_13, N, ...) N
 #define VA_NARGS(...) VA_NARGS_IMPL(_, ## __VA_ARGS__, 13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 
-#define CODE_HELPER(...) uint32_t t[] = {__VA_ARGS__}; WriteCode(cpu.memory, t, VA_NARGS(__VA_ARGS__));
+#define CODE_HELPER(...) uint32_t t[] = {__VA_ARGS__}; WriteCode(cpu.memory, t, VA_NARGS(__VA_ARGS__), 0);
+#define CODE_HELPER_ARBITRARY(offset0, ...) uint32_t t2[] = {__VA_ARGS__}; WriteCode(cpu.memory, t2, VA_NARGS(__VA_ARGS__), offset0);
 
-void WriteCode(uint8_t* memory, const uint32_t* code, uint32_t n){
+void WriteCode(uint8_t* memory, const uint32_t* code, uint32_t n, uint32_t offset){
     for(uint32_t i = 0; i < n; i++){
-        Write4B(memory,4 * i, code[i]);
+        Write4B(memory,4 * i + offset, code[i]);
     }
 }
 
@@ -483,10 +484,19 @@ void test_INTERRUPT(){
     struct cpu_t cpu;
     Reset(&cpu);
 
+    cpu.csr[CSR_MTVEC] = 2048;
+
     CODE_HELPER(
-        0x00000073
-            )
-    Tick(&cpu);
+            0x00000073 // ecall
+    )
+
+    CODE_HELPER_ARBITRARY(512,
+            0x0cc00193 // addi x3, x0, 0xcc
+    )
+
+    TickN(&cpu,2);
+
+    assert(cpu.reg[3] == 0xcc);
 
 }
 

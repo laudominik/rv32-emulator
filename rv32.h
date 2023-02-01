@@ -35,6 +35,11 @@
 
 typedef void (*instr_callback_t)(struct cpu_t*, struct instr_t*);
 
+enum Privilege {
+    PRIV_USER,
+    PRIV_MACHINE
+};
+
 struct instr_t {
 
     instr_callback_t callback;
@@ -70,6 +75,7 @@ struct cpu_t {
     uint32_t exceptionCalled;
     uint32_t exceptionInterruptNo;
 
+    enum Privilege privilege;
 
 };
 
@@ -318,6 +324,7 @@ void CSRRCI(struct cpu_t* cpu, struct instr_t* instr){
 void ECALL(struct cpu_t* cpu, struct instr_t* instr){
     cpu->exceptionCalled = INT0_ENVIRONMENT_CALL_FROM_M_MODE;
     cpu->exceptionInterruptNo = 0;
+    cpu->csr[CSR_MTVAL] = 0;
 }
 
 void EBREAK(struct cpu_t* cpu, struct instr_t* instr){
@@ -581,6 +588,16 @@ void HandleException(struct cpu_t* cpu){
 
     // TODO: check for MIE/UIE
     cpu->csr[CSR_MCAUSE] = (cpu->exceptionInterruptNo << 31) | (cpu->exceptionCalled);
+    // TODO: mtval values in OTHER!! places
+    cpu->csr[CSR_MEPC] = cpu->PC;
+    cpu->privilege = PRIV_MACHINE;
+
+    uint32_t base = cpu->csr[CSR_MTVEC] >> 2;
+    if((cpu->csr[CSR_MTVEC] & 0x3) == 0){
+        cpu->PC = base - 4;
+    } else {
+        cpu->PC = base + 4 * cpu->exceptionCalled - 4;
+    }
 
 }
 
@@ -593,12 +610,14 @@ void Tick(struct cpu_t* cpu){
         assert(0);
     }
     cpu->currentInstr.callback(cpu, &cpu->currentInstr);
-    cpu->reg[0] = 0; // hardwired zero emulation
-    cpu->PC += 4; // increment, unlike in x86, happens AFTER the instruction execution
 
     if(cpu->exceptionCalled != INTX_NO_EXCEPTION){
         HandleException(cpu);
     }
+
+    // default vals
+    cpu->reg[0] = 0; // hardwired zero emulation
+    cpu->PC += 4; // increment, unlike in x86, happens AFTER the instruction execution
     cpu->exceptionCalled = INTX_NO_EXCEPTION;
 }
 

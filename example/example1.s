@@ -1,5 +1,5 @@
 .global _start
 _start:
 
-	ecall
+	addi x3, x0, 0xcc
 
